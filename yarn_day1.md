@@ -1,7 +1,3 @@
-Absolutely! 🎯 Here’s your **YARN Cheat Sheet** covering everything you’ve learned so far! 🚀
-
-* * *
-
 # **🔥 YARN Cheat Sheet**
 
 ## **1️⃣ Basic YARN Commands**
