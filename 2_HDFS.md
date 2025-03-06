@@ -514,231 +514,141 @@ CopyEdit
 
 🔹 **Redistributes blocks to ensure proper replication.**
 
-* * *
-
-## 🔹 **1\. NameNode & Metadata**
-
-The **NameNode** is the **master node** that manages metadata and file system operations.
-
-✅ **Key Responsibilities**
-🔹 Maintains the **file system namespace** (directory structure).
-🔹 Stores **metadata** (mapping of file names to block locations).
-🔹 Manages **DataNodes** and keeps track of active nodes.
-🔹 Handles **replication** and ensures fault tolerance.
-
-✅ **Important Files in NameNode Storage**
-📂 `fsimage` – A snapshot of the entire file system metadata.
-📂 `edits` – A log of recent file system changes since the last `fsimage` save.
-📂 `fstime` – Stores the last checkpoint timestamp.
-
-* * *
-
-## 🔹 **2\. DataNodes & Storage**
-
-The **DataNodes** are the **worker nodes** that store the actual data blocks.
-
-✅ **Key Responsibilities**
-🔹 Store **HDFS data blocks** on the local file system.
-🔹 Periodically send **heartbeat** signals to the NameNode.
-🔹 Perform **read/write operations** on request.
-🔹 Replicate data blocks based on the replication factor.
-
-✅ **How DataNodes Manage Data Blocks**
-📦 Data is split into **blocks** (default: 128MB).
-🔁 Each block is replicated **(default: 3 copies)** across multiple DataNodes.
-🔍 The **Block Report** is sent to the NameNode to verify block locations.
-
-* * *
-
-## 🔹 **3\. HDFS Read & Write Process**
-
-Understanding **how HDFS reads and writes files** is key to mastering its architecture.
-
-✅ **📝 Write Process**
-1️⃣ Client contacts **NameNode** to request file creation.
-2️⃣ NameNode **allocates blocks** and selects DataNodes for storage.
-3️⃣ Client **writes data** to the selected DataNodes in a pipeline.
-4️⃣ DataNodes replicate the blocks **(default: 3 copies)**.
-5️⃣ Once all blocks are written, the **NameNode updates metadata**.
-
-✅ **📖 Read Process**
-1️⃣ Client requests a file from the **NameNode**.
-2️⃣ NameNode returns a **list of DataNodes** storing the file blocks.
-3️⃣ Client reads the blocks **directly from DataNodes** in parallel.
-4️⃣ Once all blocks are retrieved, the **file is reconstructed**.
-
-* * *
-
-## 🔹 **4\. Rack Awareness**
-
-HDFS follows a **rack-aware block placement policy** to improve fault tolerance.
-
-✅ **What is Rack Awareness?**
-🔹 HDFS **assigns racks** to DataNodes.
-🔹 NameNode ensures that **replicated blocks are placed on different racks**.
-🔹 This prevents data loss in case of **rack failure**.
-
-✅ **Default Replication Strategy (Replication Factor = 3)**
-📌 Block 1 → **Rack 1, Node A**
-📌 Block 1 Copy → **Rack 2, Node B**
-📌 Block 1 Copy → **Rack 1, Node C**
-
-This ensures that at least **one copy exists on a different rack** for redundancy.
-
-* * *
-
-## 🔹 **5\. Key Configuration Files**
-
-HDFS behavior is controlled by key configuration files:
-
-📂 **core-site.xml**
-
--   Defines **HDFS URI** (e.g., `hdfs://localhost:9000/`)
--   Configures **I/O operations** like buffer size.
-
-📂 **hdfs-site.xml**
-
--   Configures **replication factor**, block size, and NameNode directories.
--   Example property:
-
-    xml
-
-    CopyEdit
-
-    `<property>   <name>dfs.replication</name>   <value>3</value> </property>`
-
-📂 **yarn-site.xml**
-
--   Configures **YARN resource management**.
-
-📂 **mapred-site.xml**
-
--   Defines **MapReduce settings**.
-* * *
-
-✅ **Step 1: Check if HDFS is Running**
-Run the following command to verify if **NameNode and DataNodes** are running:
-
-bash
-
-CopyEdit
-
-`jps`
-
-👉 You should see processes like `NameNode`, `DataNode`, `SecondaryNameNode`, `ResourceManager`, and `NodeManager`.
-❌ If **NameNode is missing**, try:
-
-bash
-
-CopyEdit
-
-`hdfs --daemon start namenode`
-
-* * *
-
-✅ **Step 2: Check HDFS Health**
-
-bash
-
-CopyEdit
-
-`hdfs dfsadmin -report`
-
-👉 This should list **available DataNodes, storage capacity, and replication info**.
-💡 Look for **Number of DataNodes** (should be at least **1**).
-
-* * *
-
-✅ **Step 3: Create a Directory in HDFS**
-Let’s create a directory named **test\_dir** in HDFS:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -mkdir /user/$(whoami)/test_dir`
-
-👉 Verify if it was created:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -ls /user/$(whoami)`
-
-* * *
-
-✅ **Step 4: Upload a File to HDFS**
-📁 Create a test file locally:
-
-bash
-
-CopyEdit
-
-`echo "Hello, HDFS!" > testfile.txt`
-
-📤 Upload it to HDFS:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -put testfile.txt /user/$(whoami)/test_dir/`
-
-👉 Verify if the file is in HDFS:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -ls /user/$(whoami)/test_dir/`
-
-* * *
-
-✅ **Step 5: Read the File from HDFS**
-
-bash
-
-CopyEdit
-
-`hdfs dfs -cat /user/$(whoami)/test_dir/testfile.txt`
-
-👉 You should see:
-
-CopyEdit
-
-`Hello, HDFS!`
-
-* * *
-
-✅ **Step 6: Check Block Information**
-To check where the file is stored in HDFS:
-
-bash
-
-CopyEdit
-
-`hdfs fsck /user/$(whoami)/test_dir/testfile.txt -files -blocks -locations`
-
-👉 This will show **block details** and which DataNodes store them.
-
-* * *
-
-✅ **Step 7: Delete the File and Directory**
-🗑️ Remove the file:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -rm /user/$(whoami)/test_dir/testfile.txt`
-
-🗂️ Remove the directory:
-
-bash
-
-CopyEdit
-
-`hdfs dfs -rmdir /user/$(whoami)/test_dir`
-
-
+---
+
+## 🔹 **HDFS Internal Architecture Overview**
+HDFS (Hadoop Distributed File System) is a **master-slave architecture** consisting of:  
+🔹 **NameNode** (Master) → Manages metadata and file system namespace  
+🔹 **DataNodes** (Slaves) → Store actual file blocks and send heartbeats to NameNode  
+🔹 **Secondary NameNode** → Assists in checkpointing metadata (not a failover NameNode!)  
+
+---
+
+# 1️⃣ **NameNode & Metadata Management** 🖥️  
+
+### **🔹 What is `fsimage` & `edit logs`?**
+📂 **NameNode stores metadata**, such as file locations, permissions, and directory structure. This is stored in two files:  
+1️⃣ **fsimage** → A complete snapshot of the file system metadata  
+2️⃣ **edit logs** → Records recent changes (file creation, deletion, etc.)  
+
+👉 When the NameNode starts, it **loads fsimage** and **replays edit logs** to reconstruct the latest state of the file system.  
+
+### ✅ **Hands-on Command: Checking Safe Mode**
+**Safe Mode** is when the NameNode temporarily **prevents write operations** while waiting for DataNodes to report back.  
+
+🛠️ Check if Safe Mode is ON or OFF:  
+```bash
+hdfs dfsadmin -safemode get
+```
+✅ If ON, disable it manually:  
+```bash
+hdfs dfsadmin -safemode leave
+```
+
+### **🔹 How does NameNode handle failure?**
+When the **NameNode crashes**, all metadata in RAM is lost. To prevent this:  
+✅ **Checkpointing** → Periodically merges `fsimage` & `edit logs` to reduce recovery time.  
+✅ **Secondary NameNode (SNN)** → Takes snapshots to help with recovery (but is NOT a failover NameNode).  
+
+🛠️ **Check Last Checkpoint Time**  
+```bash
+hdfs dfsadmin -fetchImage .
+ls -lh fsimage_*
+```
+
+---
+
+# 2️⃣ **DataNodes & Storage** 🗄️  
+
+### **🔹 How DataNodes Store Blocks**
+🔹 Files are **split into blocks** (default size **128MB or 256MB**)  
+🔹 Blocks are stored **across multiple DataNodes**  
+🔹 Each block is **replicated** to ensure fault tolerance  
+
+✅ **Check where blocks are stored for a file:**  
+```bash
+hdfs fsck / -files -blocks -locations
+```
+👉 This will list **block locations on DataNodes**.  
+
+### **🔹 How Replication Works**
+HDFS **replicates blocks (default: 3 copies)** to prevent data loss.  
+✅ Check the replication factor:  
+```bash
+hdfs getconf -confKey dfs.replication
+```
+✅ Change the replication factor for a file:  
+```bash
+hdfs dfs -setrep -w 2 /path/to/file
+```
+
+### **🔹 How HDFS Balances Data**
+If some DataNodes have **too much data**, HDFS **balances** data across the cluster.  
+✅ Run the balancer manually:  
+```bash
+hdfs balancer
+```
+
+---
+
+# 3️⃣ **HDFS Read & Write Process** 📥📤  
+
+### **🔹 How Files are Written to HDFS**
+📌 When a client writes a file:  
+1️⃣ **Splits into blocks** (default: **128MB**)  
+2️⃣ **Contact NameNode** → Assigns DataNodes to store each block  
+3️⃣ **DataNodes replicate the block** to ensure fault tolerance  
+
+✅ **Check where a file is stored after writing:**  
+```bash
+hdfs fsck /user/$(whoami)/filename.txt -files -blocks -locations
+```
+
+### **🔹 How Files are Read from HDFS**
+📌 When a client reads a file:  
+1️⃣ **Contacts NameNode** → Gets block locations  
+2️⃣ **Reads data directly from DataNodes** (closest copy first)  
+3️⃣ **Reconstructs the file on the client side**  
+
+✅ **Read file content from HDFS:**  
+```bash
+hdfs dfs -cat /user/$(whoami)/filename.txt
+```
+
+---
+
+# 4️⃣ **Rack Awareness in HDFS** 🌍  
+
+### **🔹 Why is Rack Awareness Important?**
+🛠️ HDFS ensures data **is not lost even if an entire rack fails** by distributing replicas across different racks.  
+1️⃣ NameNode **assigns blocks to different racks** to ensure redundancy.  
+2️⃣ Default policy → **2 copies on the same rack, 1 copy on a different rack**.  
+
+✅ **Check rack awareness settings:**  
+```bash
+hdfs getconf -confKey net.topology.script.file.name
+```
+
+### **🔹 How to Configure Rack Awareness**
+🛠️ Edit the Hadoop rack script:  
+```bash
+nano $HADOOP_HOME/etc/hadoop/topology.script
+```
+Add:  
+```bash
+#!/bin/bash
+# Assign rack based on hostname
+if [[ $1 == "datanode1" ]]; then
+  echo "/rack1"
+elif [[ $1 == "datanode2" ]]; then
+  echo "/rack2"
+else
+  echo "/default-rack"
+fi
+```
+✅ **Make it executable:**  
+```bash
+chmod +x $HADOOP_HOME/etc/hadoop/topology.script
+```
+
+---
