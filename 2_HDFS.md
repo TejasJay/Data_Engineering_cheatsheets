@@ -652,3 +652,459 @@ chmod +x $HADOOP_HOME/etc/hadoop/topology.script
 ```
 
 ---
+
+# 🔹 **Key Configuration Files in HDFS**
+
+HDFS configuration is managed using **four key XML files**, each serving a different role in Hadoop’s architecture. These files define how different components interact, how data is stored, and how jobs are executed.
+
+## **📌 1️⃣ core-site.xml**
+
+✅ **Defines fundamental Hadoop properties**
+✅ Configures **default filesystem (fs.defaultFS)**
+✅ Controls Hadoop **I/O, authentication, and compression**
+
+📌 **Location:**
+
+bash
+
+CopyEdit
+
+`$HADOOP_HOME/etc/hadoop/core-site.xml`
+
+📌 **Example Configuration:**
+
+xml
+
+CopyEdit
+
+`<configuration>   <!-- Default Filesystem URI -->   <property>     <name>fs.defaultFS</name>     <value>hdfs://localhost:9000</value>   </property>    <!-- Hadoop Temporary Directory -->   <property>     <name>hadoop.tmp.dir</name>     <value>/usr/local/hadoop/tmp</value>   </property>    <!-- I/O File Buffer Size -->   <property>     <name>io.file.buffer.size</name>     <value>131072</value> <!-- 128KB -->   </property> </configuration>`
+
+📌 **Practical Verification:**
+
+bash
+
+CopyEdit
+
+`hdfs getconf -confKey fs.defaultFS`
+
+📌 **To check I/O performance:**
+
+bash
+
+CopyEdit
+
+`hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar TestDFSIO -write -nrFiles 5 -size 10MB`
+
+* * *
+
+## **📌 2️⃣ hdfs-site.xml**
+
+✅ **Configures NameNode, DataNode, and block replication settings**
+✅ Controls **replication, permissions, and block size**
+✅ Defines **safe mode & quotas**
+
+📌 **Location:**
+
+bash
+
+CopyEdit
+
+`$HADOOP_HOME/etc/hadoop/hdfs-site.xml`
+
+📌 **Example Configuration:**
+
+xml
+
+CopyEdit
+
+`<configuration>   <!-- NameNode directory -->   <property>     <name>dfs.namenode.name.dir</name>     <value>file:///usr/local/hadoop/hdfs/namenode</value>   </property>    <!-- DataNode storage directory -->   <property>     <name>dfs.datanode.data.dir</name>     <value>file:///usr/local/hadoop/hdfs/datanode</value>   </property>    <!-- Default replication factor -->   <property>     <name>dfs.replication</name>     <value>3</value>   </property>    <!-- Default block size -->   <property>     <name>dfs.blocksize</name>     <value>134217728</value> <!-- 128MB -->   </property>    <!-- Safe Mode Threshold -->   <property>     <name>dfs.namenode.safemode.threshold-pct</name>     <value>0.999</value>   </property> </configuration>`
+
+📌 **Practical Verification:**
+
+bash
+
+CopyEdit
+
+`hdfs dfsadmin -report`
+
+bash
+
+CopyEdit
+
+`hdfs fsck /`
+
+📌 **To test replication factor:**
+
+bash
+
+CopyEdit
+
+`hdfs dfs -setrep 2 /user/hadoop/sample.txt`
+
+* * *
+
+## **📌 3️⃣ mapred-site.xml**
+
+✅ **Configures MapReduce execution & scheduling**
+✅ Defines **job tracker location, memory settings**
+✅ Manages **task parallelism**
+
+📌 **Location:**
+
+bash
+
+CopyEdit
+
+`$HADOOP_HOME/etc/hadoop/mapred-site.xml`
+
+📌 **Example Configuration:**
+
+xml
+
+CopyEdit
+
+`<configuration>   <!-- Define MapReduce framework -->   <property>     <name>mapreduce.framework.name</name>     <value>yarn</value>   </property>    <!-- Reduce tasks per node -->   <property>     <name>mapreduce.job.reduces</name>     <value>2</value>   </property>    <!-- Mapper and Reducer memory settings -->   <property>     <name>mapreduce.map.memory.mb</name>     <value>1024</value>   </property>    <property>     <name>mapreduce.reduce.memory.mb</name>     <value>2048</value>   </property> </configuration>`
+
+📌 **Practical Verification:**
+
+bash
+
+CopyEdit
+
+`hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /input /output`
+
+📌 **To check running jobs:**
+
+bash
+
+CopyEdit
+
+`mapred job -list`
+
+* * *
+
+## **📌 4️⃣ yarn-site.xml**
+
+✅ **Configures YARN (Yet Another Resource Negotiator)**
+✅ Controls **ResourceManager, NodeManager, and scheduling policies**
+✅ Defines **memory, CPU limits, and application scheduling**
+
+📌 **Location:**
+
+bash
+
+CopyEdit
+
+`$HADOOP_HOME/etc/hadoop/yarn-site.xml`
+
+📌 **Example Configuration:**
+
+xml
+
+CopyEdit
+
+`<configuration>   <!-- Resource Manager Address -->   <property>     <name>yarn.resourcemanager.address</name>     <value>localhost:8032</value>   </property>    <!-- Enable NodeManager -->   <property>     <name>yarn.nodemanager.aux-services</name>     <value>mapreduce_shuffle</value>   </property>    <!-- Memory Allocation -->   <property>     <name>yarn.scheduler.maximum-allocation-mb</name>     <value>4096</value>   </property>    <property>     <name>yarn.scheduler.minimum-allocation-mb</name>     <value>512</value>   </property> </configuration>`
+
+📌 **Practical Verification:**
+
+bash
+
+CopyEdit
+
+`yarn node -list`
+
+bash
+
+CopyEdit
+
+`yarn application -list`
+
+* * *
+
+# **📌 Tuning HDFS Performance**
+
+Performance tuning in HDFS involves optimizing **block size, replication factor, compression, and resource allocation**. Let's break it down step by step.
+
+* * *
+
+## **🛠 1️⃣ Adjusting Block Size (dfs.blocksize)**
+
+✅ **What is it?**
+HDFS stores data in blocks, and the default block size is **128MB**. A larger block size reduces metadata overhead and improves read/write efficiency for large files.
+
+✅ **When to change it?**
+
+-   **Increase block size (256MB-512MB)** for **large files** (e.g., videos, logs).
+-   **Decrease block size (64MB)** for **small files** to avoid wasted space.
+
+📌 **Configuration (hdfs-site.xml):**
+
+xml
+
+CopyEdit
+
+`<property>   <name>dfs.blocksize</name>   <value>268435456</value> <!-- 256MB --> </property>`
+
+📌 **Verify block size for a file:**
+
+bash
+
+CopyEdit
+
+`hdfs fsck /path/to/file -files -blocks -locations`
+
+📌 **Upload a file with a specific block size:**
+
+bash
+
+CopyEdit
+
+`hdfs dfs -Ddfs.blocksize=134217728 -put largefile.txt /user/hadoop/`
+
+* * *
+
+## **🛠 2️⃣ Adjusting Replication Factor (dfs.replication)**
+
+✅ **What is it?**
+HDFS replicates each block **(default: 3 copies)** to different DataNodes for fault tolerance.
+
+✅ **When to change it?**
+
+-   **Reduce to 2** for **low-priority data** to save space.
+-   **Increase to 4+** for **critical data** to improve fault tolerance.
+
+📌 **Configuration (hdfs-site.xml):**
+
+xml
+
+CopyEdit
+
+`<property>   <name>dfs.replication</name>   <value>2</value> </property>`
+
+📌 **Change replication factor for an existing file:**
+
+bash
+
+CopyEdit
+
+`hdfs dfs -setrep 2 /user/hadoop/myfile.txt`
+
+📌 **Check replication of a file:**
+
+bash
+
+CopyEdit
+
+`hdfs fsck / -files -blocks`
+
+* * *
+
+## **🛠 3️⃣ Enabling Compression for Storage Efficiency**
+
+✅ **What is it?**
+HDFS supports **compression** to reduce storage space and speed up data transfers.
+
+✅ **Types of Compression:**
+
+| Compression Type | Pros | Cons |
+| --- | --- | --- |
+| Gzip (.gz) | High compression ratio | Not splittable (bad for MapReduce) |
+| Bzip2 (.bz2) | Splittable & efficient | Slower compression |
+| LZO | Splittable & fast | Lower compression ratio |
+
+📌 **Enable compression in core-site.xml:**
+
+xml
+
+CopyEdit
+
+`<property>   <name>io.compression.codecs</name>   <value>org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.BZip2Codec</value> </property>`
+
+📌 **Compress files in HDFS:**
+
+bash
+
+CopyEdit
+
+`hdfs dfs -text /user/hadoop/data.txt | gzip > data.gz hdfs dfs -put data.gz /user/hadoop/`
+
+📌 **Verify compression type:**
+
+bash
+
+CopyEdit
+
+`hadoop checknative -a`
+
+* * *
+
+## **🛠 4️⃣ Optimize Memory & I/O Buffers**
+
+✅ **Increase I/O buffer size** (core-site.xml) for **faster reads/writes**:
+
+xml
+
+CopyEdit
+
+`<property>   <name>io.file.buffer.size</name>   <value>131072</value> <!-- 128KB --> </property>`
+
+✅ **Adjust Memory Settings in YARN (yarn-site.xml)**
+
+xml
+
+CopyEdit
+
+`<property>   <name>yarn.scheduler.minimum-allocation-mb</name>   <value>1024</value> <!-- Min 1GB per container --> </property>  <property>   <name>yarn.scheduler.maximum-allocation-mb</name>   <value>8192</value> <!-- Max 8GB per container --> </property>`
+
+📌 **Check current buffer size:**
+
+bash
+
+CopyEdit
+
+`hdfs getconf -confKey io.file.buffer.size`
+
+* * *
+
+
+# **📌 HDFS High Availability (HA) 🛠️**
+
+HDFS **High Availability (HA)** ensures that the **NameNode** is always available, eliminating a **single point of failure** (SPOF). It uses **Active-Standby NameNodes** and **Quorum Journal Manager (QJM)** for failover.
+
+* * *
+
+## **🛠 1️⃣ Understanding Active & Standby NameNodes**
+
+### ✅ **What is it?**
+
+HDFS HA sets up **two NameNodes**:
+
+-   **🔵 Active NameNode (NN1)** – Handles client requests.
+-   **🟢 Standby NameNode (NN2)** – Synchronizes metadata with NN1 and takes over in case of failure.
+
+### ✅ **How does it work?**
+
+-   Both NameNodes **share edit logs** using **Quorum Journal Manager (QJM)**.
+-   If the Active NameNode **fails**, the **Standby** automatically takes over.
+
+📌 **Check the active/standby state:**
+
+bash
+
+CopyEdit
+
+`hdfs haadmin -getServiceState nn1 hdfs haadmin -getServiceState nn2`
+
+* * *
+
+## **🛠 2️⃣ Configuring Quorum Journal Manager (QJM) 📒**
+
+### ✅ **What is QJM?**
+
+-   Stores **edit logs** across multiple **JournalNodes (JNs)**.
+-   Ensures that changes are written to a **majority (quorum)** before applying.
+
+### ✅ **Setup Steps:**
+
+1️⃣ **Modify `hdfs-site.xml`**
+
+xml
+
+CopyEdit
+
+`<property>   <name>dfs.nameservices</name>   <value>mycluster</value> </property>  <property>   <name>dfs.ha.namenodes.mycluster</name>   <value>nn1,nn2</value> </property>  <property>   <name>dfs.namenode.rpc-address.mycluster.nn1</name>   <value>192.168.2.100:8020</value> </property>  <property>   <name>dfs.namenode.rpc-address.mycluster.nn2</name>   <value>192.168.2.101:8020</value> </property>  <property>   <name>dfs.namenode.shared.edits.dir</name>   <value>qjournal://192.168.2.102:8485;192.168.2.103:8485;192.168.2.104:8485/mycluster</value> </property>`
+
+💡 **Explanation:**
+
+-   `dfs.nameservices` → Logical cluster name (`mycluster`).
+-   `dfs.ha.namenodes.mycluster` → Lists **both NameNodes**.
+-   `dfs.namenode.shared.edits.dir` → Points to **three JournalNodes (QJM)**.
+* * *
+
+2️⃣ **Modify `core-site.xml`**
+
+xml
+
+CopyEdit
+
+`<property>   <name>fs.defaultFS</name>   <value>hdfs://mycluster</value> </property>`
+
+3️⃣ **Start JournalNodes on all nodes**
+
+bash
+
+CopyEdit
+
+`hdfs journalnode`
+
+4️⃣ **Initialize shared edits directory**
+
+bash
+
+CopyEdit
+
+`hdfs namenode -initializeSharedEdits`
+
+* * *
+
+## **🛠 3️⃣ Configuring Failover Controller (ZKFC) 🔄**
+
+### ✅ **What is ZKFC?**
+
+-   **ZooKeeper Failover Controller (ZKFC)** monitors NameNodes.
+-   If the Active NameNode **fails**, it **automatically promotes** the Standby.
+
+### ✅ **Steps to Configure ZKFC:**
+
+1️⃣ **Modify `hdfs-site.xml`**
+
+xml
+
+CopyEdit
+
+`<property>   <name>dfs.ha.automatic-failover.enabled</name>   <value>true</value> </property>`
+
+2️⃣ **Start Zookeeper & ZKFC on all nodes**
+
+bash
+
+CopyEdit
+
+`zkServer.sh start hdfs zkfc -formatZK`
+
+3️⃣ **Manually trigger failover (for testing)**
+
+bash
+
+CopyEdit
+
+`hdfs haadmin -failover nn1 nn2`
+
+* * *
+
+## **🛠 4️⃣ Testing High Availability 🔍**
+
+1️⃣ **Check which NameNode is active:**
+
+bash
+
+CopyEdit
+
+`hdfs haadmin -getServiceState nn1 hdfs haadmin -getServiceState nn2`
+
+2️⃣ **Simulate a NameNode failure:**
+
+bash
+
+CopyEdit
+
+`kill -9 <NN1_PID>`
+
+3️⃣ **Verify Standby becomes Active:**
+
+bash
+
+CopyEdit
+
+`hdfs haadmin -getServiceState nn2`
+
