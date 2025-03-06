@@ -311,3 +311,209 @@ CopyEdit
 * * *
 
 
+# **🔥 1. How HDFS Stores Data (Block-Based Storage)**
+
+### **📌 Why Blocks?**
+
+HDFS **splits large files** into **fixed-size blocks** to store across multiple machines.
+
+📌 **Default Block Size:**
+
+-   **128MB** (Hadoop 2.x & 3.x, configurable)
+-   **64MB** (Hadoop 1.x)
+
+📌 **How File Storage Works in HDFS:** 1️⃣ When a file is uploaded, HDFS **divides it into blocks** (e.g., a **600MB file** → 5 blocks of 128MB each).
+2️⃣ Each block is stored on **different DataNodes** to ensure redundancy & fault tolerance.
+3️⃣ The **NameNode tracks where each block is stored** in metadata.
+
+💡 **Example: A 500MB file in HDFS (128MB block size)**
+
+| Block | DataNode 1 | DataNode 2 | DataNode 3 |
+| --- | --- | --- | --- |
+| Block 1 (128MB) | ✅ | ✅ (Replica) | ✅ (Replica) |
+| Block 2 (128MB) | ✅ | ✅ (Replica) | ✅ (Replica) |
+| Block 3 (128MB) | ✅ | ✅ (Replica) | ✅ (Replica) |
+| Block 4 (116MB) | ✅ | ✅ (Replica) | ✅ (Replica) |
+
+📌 **View Block Size Configuration in HDFS**
+
+bash
+
+CopyEdit
+
+`hdfs getconf -confKey dfs.blocksize`
+
+🔹 **Displays the current block size setting in bytes (default: 134217728 for 128MB).**
+
+📌 **View Block Details of a File**
+
+bash
+
+CopyEdit
+
+`hdfs fsck /user/your_username/input/localfile.txt -files -blocks -locations`
+
+🔹 **Shows how HDFS splits a file into blocks and where each block is stored.**
+
+* * *
+
+# **🔥 2. HDFS NameNode & Metadata Management**
+
+### **📌 What is Metadata?**
+
+The **NameNode doesn’t store actual data**—it only keeps a **mapping (metadata) of files to blocks**.
+
+📌 **Metadata is stored in two files:**
+
+| **Metadata File** | **Purpose** |
+| --- | --- |
+| **fsimage** | A snapshot of the HDFS namespace (file structure, permissions, locations). |
+| **edits log** | Tracks recent metadata changes (file creation, deletion, renaming). |
+
+💡 **Example: If you create a file in HDFS…**
+
+-   NameNode **updates `edits log` immediately**.
+-   Every few minutes, the **Secondary NameNode merges `fsimage` and `edits log`** into a new `fsimage` file.
+
+📌 **View fsimage & edits log (Hands-On)**
+
+bash
+
+CopyEdit
+
+`ls -lh /usr/local/hadoop/tmp/dfs/name/current/`
+
+🔹 **Shows metadata files (`fsimage`, `edits`, `VERSION`).**
+
+📌 **Check Safe Mode Status (Read-Only Mode for Metadata)**
+
+bash
+
+CopyEdit
+
+`hdfs dfsadmin -safemode get`
+
+🔹 **If enabled, HDFS doesn’t allow writes until block reports are received.**
+
+📌 **Manually Force a Checkpoint (Merge fsimage & edits log)**
+
+bash
+
+CopyEdit
+
+`hdfs secondarynamenode -checkpoint force`
+
+🔹 **Forces the Secondary NameNode to merge metadata.**
+
+* * *
+
+# **🔥 3. HDFS Replication & Fault Tolerance**
+
+### **📌 How HDFS Handles Failures (Replication Mechanism)**
+
+✅ By default, **each block is replicated 3 times** for fault tolerance.
+✅ If a **DataNode fails**, HDFS **automatically re-replicates lost blocks**.
+
+📌 **Check the Replication Factor of a File**
+
+bash
+
+CopyEdit
+
+`hdfs fsck /user/your_username/input/localfile.txt -files -blocks`
+
+🔹 **Displays the replication factor of each block.**
+
+📌 **Manually Set Replication Factor**
+
+bash
+
+CopyEdit
+
+`hdfs dfs -setrep -w 2 /user/your_username/input/localfile.txt`
+
+🔹 **Changes replication factor to 2 (default is 3).**
+
+📌 **View Missing Blocks in HDFS**
+
+bash
+
+CopyEdit
+
+`hdfs fsck / -missing`
+
+🔹 **Lists any missing blocks that need replication.**
+
+* * *
+
+# **🔥 4. Rack Awareness in HDFS**
+
+### **📌 What is Rack Awareness?**
+
+HDFS **distributes data across multiple racks** in a data center to **protect against entire rack failures**.
+
+✅ Blocks are stored in **different racks** to **ensure high availability**. ✅ Default policy: **One block replica in a different rack** to avoid total data loss.
+
+💡 **Example: If a Data Center has 3 Racks (`Rack-1`, `Rack-2`, `Rack-3`)**
+
+| Block | DataNode in Rack-1 | DataNode in Rack-2 | DataNode in Rack-3 |
+| --- | --- | --- | --- |
+| Block 1 | ✅ (Replica 1) | ✅ (Replica 2) | ✅ (Replica 3) |
+
+📌 **Check Rack Awareness Configuration**
+
+bash
+
+CopyEdit
+
+`hdfs getconf -confKey net.topology.script.file.name`
+
+🔹 **Shows the script used for rack topology.**
+
+📌 **View Blocks Placement Across Racks**
+
+bash
+
+CopyEdit
+
+`hdfs fsck / -files -blocks -racks`
+
+🔹 **Shows which racks store each file's blocks.**
+
+* * *
+
+# **🔥 5. Simulating HDFS Failures (Hands-On)**
+
+### **✅ 1. Kill a DataNode to Simulate Failure**
+
+bash
+
+CopyEdit
+
+`jps  # Find the DataNode process ID kill -9 <DataNode_PID>`
+
+🔹 **Kills a DataNode to test HDFS self-healing.**
+
+📌 **Check Missing Blocks After DataNode Failure**
+
+bash
+
+CopyEdit
+
+`hdfs fsck / -files -blocks -locations`
+
+🔹 **Lists blocks that lost replication.**
+
+📌 **Force HDFS to Rebalance & Restore Replication**
+
+bash
+
+CopyEdit
+
+`hdfs balancer`
+
+🔹 **Redistributes blocks to ensure proper replication.**
+
+* * *
+
+
